@@ -1,4 +1,4 @@
-# AI Bot with Advance Assistant Features
+# AI Bot with Advance Memory Utilization
 
 An interactive AI-powered chatbot with voice capabilities that listens to user queries and responds in the same language. Choose between two unique bot personas—a **Rude Banker** and a **Humble Actor**—each with its own distinct personality and backstory. This project demonstrates how to integrate Speech-to-Text (using OpenAI's Whisper API), Natural Language Processing (using OpenAI's Chat API), and Text-to-Speech (using Google Cloud Text-to-Speech API) into one complete application.
 
