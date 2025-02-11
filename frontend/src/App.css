@@ -1,4 +1,3 @@
-/* App.css */
 
 .App {
     display: flex;
@@ -6,7 +5,7 @@
     font-family: Arial, sans-serif;
   }
   
-  /* Sidebar styling */
+  
   .sidebar {
     width: 200px;
     background-color: #f3f3f3;
@@ -21,7 +20,6 @@
     margin-top: 20px;
   }
   
-  /* Chat container styling */
   .chat-container {
     flex: 1;
     display: flex;
