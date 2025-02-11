@@ -11,15 +11,12 @@ from pydantic import BaseModel
 
 import openai
 
-# Set your OpenAI API key as an environment variable.
-# For example, in your terminal (replace <your-key> with your key):
-# export OPENAI_API_KEY=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
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 app = FastAPI()
 
-# Allow CORS so that the React frontend (likely on another port) can communicate.
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -28,7 +25,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# System prompts for our two bots.
+
 SYSTEM_PROMPTS = {
     "banker": (
         "You are Mr. Fendleton, a rude banker who has been working at the bank for far too long. "
@@ -45,7 +42,7 @@ SYSTEM_PROMPTS = {
 }
 
 
-# Pydantic model for chat requests.
+
 class ChatRequest(BaseModel):
     message: str
     conversation: Optional[List[dict]] = []  # conversation history; each message has a 'role' and 'content'
@@ -57,7 +54,7 @@ async def chat(req: ChatRequest):
     bot = req.bot.lower()
     system_prompt = SYSTEM_PROMPTS.get(bot, SYSTEM_PROMPTS["banker"])
     
-    # Build the message list to send to the OpenAI API.
+    
     messages = [{"role": "system", "content": system_prompt}]
     if req.conversation:
         messages.extend(req.conversation)
@@ -93,9 +90,7 @@ async def transcribe_audio(file: UploadFile = File(...)):
         return {"error": str(e)}
 
 
-# For text-to-speech, we use Google Cloud Text-to-Speech.
-# Make sure you have set the environment variable GOOGLE_APPLICATION_CREDENTIALS
-# pointing to your service account key JSON file.
+
 from google.cloud import texttospeech
 
 @app.post("/tts")
