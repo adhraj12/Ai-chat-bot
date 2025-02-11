@@ -4,14 +4,14 @@ import axios from "axios";
 import "./App.css";
 
 function App() {
-  const [bot, setBot] = useState("banker"); // "banker" or "actor"
-  const [conversation, setConversation] = useState([]); // Array of message objects
+  const [bot, setBot] = useState("banker"); 
+  const [conversation, setConversation] = useState([]); 
   const [input, setInput] = useState("");
   const [recording, setRecording] = useState(false);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
-  // Send text message to the backend chat endpoint.
+  
   const sendMessage = async () => {
     if (input.trim() === "") return;
     const userMessage = { role: "user", content: input };
@@ -20,7 +20,7 @@ function App() {
     try {
       const response = await axios.post("http://localhost:8000/chat", {
         message: input,
-        conversation: conversation, // sending the conversation history
+        conversation: conversation, 
         bot: bot,
       });
       if (response.data.reply) {
@@ -33,7 +33,7 @@ function App() {
     setInput("");
   };
 
-  // Start recording audio
+  
   const startRecording = async () => {
     setRecording(true);
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -52,13 +52,13 @@ function App() {
     }
   };
 
-  // Stop recording audio
+  
   const stopRecording = () => {
     setRecording(false);
     mediaRecorderRef.current.stop();
   };
 
-  // When recording stops, send the audio to the /whisper endpoint.
+  
   const handleRecordingStop = async () => {
     const audioBlob = new Blob(audioChunksRef.current, { type: "audio/wav" });
     const formData = new FormData();
@@ -75,13 +75,13 @@ function App() {
     }
   };
 
-  // Play the bot's reply using text-to-speech.
+  
   const playAudio = async (text) => {
     try {
       const response = await axios.post("http://localhost:8000/tts", null, {
         params: {
           text: text,
-          language_code: "en-US", // you can adjust this based on the language
+          language_code: "en-US", 
         },
         responseType: "blob",
       });
