@@ -13,8 +13,8 @@ from pydantic import BaseModel
 
 import openai
 
-GEMINI_API_KEY = "AIzaSyC_NnTR_S_wudHeAapqPhMHXfujilQX0wI"
-GOOGLE_TTS_API_KEY = "AIzaSyABY-tZxHZYkyXB3OJxhH2_sm_4m9xKOwY"
+GEMINI_API_KEY = "enter_your_api_key"
+GOOGLE_TTS_API_KEY = "enter_your_api_key"
 
 app = FastAPI()
 app.add_middleware(
