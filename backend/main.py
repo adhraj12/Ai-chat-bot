@@ -2,6 +2,8 @@
 import os
 import tempfile
 import io
+import base64
+import requests
 from typing import List, Optional
 
 from fastapi import FastAPI, UploadFile, File
@@ -11,12 +13,10 @@ from pydantic import BaseModel
 
 import openai
 
-
-openai.api_key = os.getenv("OPENAI_API_KEY")
+GEMINI_API_KEY = "AIzaSyC_NnTR_S_wudHeAapqPhMHXfujilQX0wI"
+GOOGLE_TTS_API_KEY = "AIzaSyABY-tZxHZYkyXB3OJxhH2_sm_4m9xKOwY"
 
 app = FastAPI()
-
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,7 +24,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 SYSTEM_PROMPTS = {
     "banker": (
@@ -41,42 +40,96 @@ SYSTEM_PROMPTS = {
     )
 }
 
-
-
 class ChatRequest(BaseModel):
     message: str
-    conversation: Optional[List[dict]] = []  # conversation history; each message has a 'role' and 'content'
-    bot: str  # "banker" or "actor"
+    conversation: Optional[List[dict]] = []
+    bot: str
 
+def detect_language(text: str) -> str:
+    for char in text:
+        if "\u0900" <= char <= "\u097F":
+            return "hi-IN"
+    return "en-US"
+
+def call_gemini(messages: List[dict]) -> str:
+    url = "https://gemini.googleapis.com/v2/flash"
+    payload = {
+        "model": "gemini-2.0-flash",
+        "messages": messages,
+        "temperature": 0.7
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {GEMINI_API_KEY}"
+    }
+    response = requests.post(url, json=payload, headers=headers)
+    response.raise_for_status()
+    data = response.json()
+    print("Gemini API response:", data)
+    return data["choices"][0]["message"]["content"]
+
+class ChatBotMemory:
+    def __init__(self, max_tokens=1000):
+        self.max_tokens = max_tokens
+        self.short_term_memory = []
+        self.long_term_memory = []
+
+    def add_message(self, role, message):
+        self.short_term_memory.append({"role": role, "message": message})
+        self.compress_memory()
+
+    def compress_memory(self):
+        current_tokens = sum(len(msg["message"]) for msg in self.short_term_memory)
+        while current_tokens > self.max_tokens:
+            if not self.short_term_memory:
+                break
+            oldest_msg = self.short_term_memory.pop(0)
+            summary = self.summarize(oldest_msg["message"])
+            self.long_term_memory.append(summary)
+            current_tokens = sum(len(msg["message"]) for msg in self.short_term_memory)
+
+    def summarize(self, message):
+        return f"Summary: {message[:20]}..."
+
+    def get_context(self):
+        stm_context = " ".join(msg["message"] for msg in self.short_term_memory)
+        ltm_context = " ".join(self.long_term_memory)
+        return f"{ltm_context} {stm_context}".strip()
+
+memory = ChatBotMemory(max_tokens=1500)
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
     bot = req.bot.lower()
+    language_code = detect_language(req.message)
     system_prompt = SYSTEM_PROMPTS.get(bot, SYSTEM_PROMPTS["banker"])
-    
-    
+
+    if language_code == "hi-IN":
+        system_prompt += "\nकृपया हिंदी में उत्तर दें।"
+    else:
+        system_prompt += "\nPlease reply in English."
+
+    memory.add_message("user", req.message)
+    context = memory.get_context()
+
     messages = [{"role": "system", "content": system_prompt}]
-    if req.conversation:
-        messages.extend(req.conversation)
-    messages.append({"role": "user", "content": req.message})
-    
+    conversation_history = []
+    for msg_dict in memory.short_term_memory:
+        if msg_dict["role"] != "user" and msg_dict["role"] != "assistant":
+            continue
+        conversation_history.append({"role": msg_dict["role"], "content": msg_dict["message"]})
+    if conversation_history:
+        messages.extend(conversation_history)
+
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # or any model you prefer
-            messages=messages,
-            temperature=0.7
-        )
-        bot_reply = response.choices[0].message.content
-        return {"reply": bot_reply}
+        bot_reply_message = call_gemini(messages)
+        memory.add_message("assistant", bot_reply_message)
+        return {"reply": bot_reply_message}
     except Exception as e:
         return {"error": str(e)}
 
-
 @app.post("/whisper")
 async def transcribe_audio(file: UploadFile = File(...)):
-    """
-    Accepts an audio file upload and returns its transcription using OpenAI's Whisper API.
-    """
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
             tmp.write(await file.read())
@@ -89,32 +142,22 @@ async def transcribe_audio(file: UploadFile = File(...)):
     except Exception as e:
         return {"error": str(e)}
 
-
-
-from google.cloud import texttospeech
-
 @app.post("/tts")
 async def text_to_speech(text: str, language_code: str = "en-US"):
-    """
-    Converts provided text to speech and returns an MP3 audio stream.
-    """
     try:
-        client = texttospeech.TextToSpeechClient()
-
-        synthesis_input = texttospeech.SynthesisInput(text=text)
-        voice = texttospeech.VoiceSelectionParams(
-            language_code=language_code,
-            ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
-        )
-        audio_config = texttospeech.AudioConfig(
-            audio_encoding=texttospeech.AudioEncoding.MP3
-        )
-        response = client.synthesize_speech(
-            input=synthesis_input,
-            voice=voice,
-            audio_config=audio_config
-        )
-        
-        return StreamingResponse(io.BytesIO(response.audio_content), media_type="audio/mpeg")
+        url = f"https://texttospeech.googleapis.com/v1/text:synthesize?key={GOOGLE_TTS_API_KEY}"
+        payload = {
+            "input": {"text": text},
+            "voice": {"languageCode": language_code, "ssmlGender": "NEUTRAL"},
+            "audioConfig": {"audioEncoding": "MP3"}
+        }
+        response = requests.post(url, json=payload)
+        response.raise_for_status()
+        data = response.json()
+        audio_content = data.get("audioContent")
+        if not audio_content:
+            raise Exception("No audio content received from TTS API")
+        audio_bytes = base64.b64decode(audio_content)
+        return StreamingResponse(io.BytesIO(audio_bytes), media_type="audio/mpeg")
     except Exception as e:
         return {"error": str(e)}
