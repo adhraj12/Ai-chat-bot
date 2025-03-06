@@ -85,3 +85,12 @@ Use the dropdown menu to switch between the Rude Banker and the Humble Actor. Ch
    
 3. **Voice Response:**
 When a bot response appears, click the speaker button (🔊) next to the message to hear it spoken aloud.
+
+## License
+This project is licensed under the Apache-2.0 license.
+
+## Contact
+For any queries, contact:
+- **Adhiraj Jagtap** - [adhirajjagtap12@gmail.com](mailto:adhirajjagtap12@gmail.com)
+- **Parth Takate** - [parthtakate51@gmail.com](mailto:parthtakate51@gmail.com)
+- **Indra Kale** - [indrakale4111@gmail.com](mailto:indrakale4111@gmail.com)
